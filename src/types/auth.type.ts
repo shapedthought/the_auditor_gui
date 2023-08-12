@@ -1,5 +1,6 @@
 export interface AuthItem {
 	type: string;
+	id: string;
 	user: User | null;
 	group: Group | null;
 }

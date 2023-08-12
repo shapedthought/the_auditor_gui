@@ -3,6 +3,7 @@
 	import type { User } from '../../types/user.type.js';
 	import type { Group } from '../../types/group.type.js';
 	import { invoke } from '@tauri-apps/api/tauri';
+	import { save, open } from '@tauri-apps/api/dialog';
 	import { SvelteToast, toast } from '@zerodevx/svelte-toast';
 	import { dialog, fs } from '@tauri-apps/api';
 
@@ -41,11 +42,56 @@
 		address = value;
 	});
 
-	function handleFileInput(event: any) {
-		filePath = event.target.files[0];
-		fileName = event.target.files[0].name;
+	async function add_users() {
+		let readPath = await open({
+			filters: [
+				{
+					name: 'excel',
+					extensions: ['xlsx']
+				}
+			]
+		});
+		invoke('add_users', {
+			address: address,
+			token: accessTokenLocal,
+			path: readPath
+		})
+			.then((data) => {
+				const response = data as String;
+				showAlert('Added users!');
+				// save_json(users, 'users.json');
+				console.log(response);
+			})
+			.catch((err) => {
+				showErrorAlert(err);
+				console.log(err);
+			});
+	}
 
-		console.log(filePath);
+	async function add_groups() {
+		let readPath = await open({
+			filters: [
+				{
+					name: 'excel',
+					extensions: ['xlsx']
+				}
+			]
+		});
+		invoke('add_groups', {
+			address: address,
+			token: accessTokenLocal,
+			path: readPath
+		})
+			.then((data) => {
+				const response = data as String;
+				showAlert('Added users!');
+				// save_json(users, 'users.json');
+				console.log(response);
+			})
+			.catch((err) => {
+				showErrorAlert(err);
+				console.log(err);
+			});
 	}
 
 	async function save_json(jsonData: User | Group, fileName: string) {
@@ -59,6 +105,7 @@
 			]
 		});
 		if (filePath != null) {
+			// need to change this
 			fs.writeFile(filePath, JSON.stringify(jsonData));
 		} else {
 			showErrorAlert('No file path selected!');
@@ -66,14 +113,24 @@
 	}
 
 	async function get_users() {
+		const savePath = await save({
+			defaultPath: 'users.xlsx',
+			filters: [
+				{
+					name: 'excel',
+					extensions: ['xlsx']
+				}
+			]
+		});
 		invoke('get_users', {
 			address: address,
-			token: accessTokenLocal
+			token: accessTokenLocal,
+			path: savePath
 		})
 			.then((data) => {
 				users = data as User;
 				showAlert('Got users!');
-				save_json(users, 'users.json');
+				// save_json(users, 'users.json');
 				console.log(data);
 			})
 			.catch((err) => {
@@ -83,14 +140,23 @@
 	}
 
 	async function get_groups() {
+		const savePath = await save({
+			defaultPath: 'groups.xlsx',
+			filters: [
+				{
+					name: 'excel',
+					extensions: ['xlsx']
+				}
+			]
+		});
 		invoke('get_groups', {
 			address: address,
-			token: accessTokenLocal
+			token: accessTokenLocal,
+			path: savePath
 		})
 			.then((data) => {
 				users = data as Group;
 				showAlert('Got Groups!');
-				save_json(users, 'groups.json');
 				console.log(data);
 			})
 			.catch((err) => {
@@ -102,6 +168,17 @@
 
 <h1 class="title">Add</h1>
 
+<div class="column">
+	<div class="card card-content">
+		<p>
+			To add users or groups first click on the "Get" button, this will save Users or Groups to an
+			Excel file
+		</p>
+		<p>Then you can edit the Excel file remove users or groups you do not want to Audit.</p>
+		<p>Then click on either the "Add Users" or "Add Groups" buttons to add them to the Audit.</p>
+		<p>Note: Do not change the sheet name or the structure of the columns!</p>
+	</div>
+</div>
 <div class="column">
 	<div class="card">
 		<div class="card-header">
@@ -120,42 +197,10 @@
 			<p class="card-header-title">Add Users or Groups</p>
 		</div>
 		<div class="card-content">
-			<div class="file">
-				<label class="file-label">
-					<input
-						class="file-input"
-						type="file"
-						accept=".json"
-						name="resume"
-						on:input={handleFileInput}
-					/>
-					<span class="file-cta">
-						<span class="file-label"> Choose a file… </span>
-					</span>
-				</label>
-			</div>
-			<p>{fileName}</p>
+			<button class="button mr-2" on:click={add_users}>Add Users</button>
+			<button class="button" on:click={add_groups}>Add Groups</button>
 		</div>
 	</div>
 </div>
-{#if fileName.length > 0}
-	<div class="column">
-		<div class="card">
-			<div class="card-header">
-				<p class="card-header-title">Select if file has Users or Groups</p>
-			</div>
-			<div class="card-body">
-				<div class="column">
-					<div class="select mr-2">
-						<select bind:value={selectedType}>
-							<option value="Users">Users</option>
-							<option value="Groups">Groups</option>
-						</select>
-					</div>
-					<button class="button">Add {selectedType}</button>
-				</div>
-			</div>
-		</div>
-	</div>
-{/if}
+
 <SvelteToast />
