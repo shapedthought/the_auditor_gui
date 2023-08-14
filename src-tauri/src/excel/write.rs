@@ -23,7 +23,9 @@ pub fn write_excel(path: String, user: Option<User>, group: Option<Group>) -> Re
                 user.location_type.to_string(),
             ]).unwrap();
         });
-    } else if group.is_some() {
+    };
+    
+    if group.is_some() {
         let worksheet = workbook.add_worksheet().set_name("Groups").unwrap();
         worksheet.write_row(0, 0, ["ID", "Display Name", "Name", "Type", "Location Type", "Managed by", "Site"]).unwrap();
 

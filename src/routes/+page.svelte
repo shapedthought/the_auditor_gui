@@ -1,9 +1,12 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import Swal from 'sweetalert2';
 	import { loggedIn, accessToken, addressSet, orgId, orgName } from '../stores.js';
 	import type { OrgSummary } from '../types/org.type.js';
 	import { invoke } from '@tauri-apps/api/tauri';
 	import { SvelteToast, toast } from '@zerodevx/svelte-toast';
+	import { showErrorAlert } from '$lib/alerts.svelte';
+	import { Jumper } from 'svelte-loading-spinners';
 
 	let chooseOrgs = false;
 	let address = '';
@@ -12,26 +15,7 @@
 	let orgs: OrgSummary[] = [];
 	let selectedOrgId = '';
 	let accessTokenLocal = '';
-
-	function showAlert(message: string) {
-		toast.push(message, {
-			theme: {
-				'--toastColor': 'mintcream',
-				'--toastBackground': 'rgba(72,187,120,0.9)',
-				'--toastBarBackground': '#2F855A'
-			}
-		});
-	}
-
-	function showErrorAlert(err: string) {
-		toast.push('Error!', {
-			theme: {
-				'--toastColor': 'black',
-				'--toastBackground': 'rgba(255,41,50,0.8)',
-				'--toastBarBackground': '#800000'
-			}
-		});
-	}
+	let isLoading = false;
 
 	function setOrg() {
 		orgId.set(selectedOrgId);
@@ -42,6 +26,7 @@
 	}
 
 	async function login() {
+		isLoading = true;
 		try {
 			let response: string = await invoke('login', {
 				username: username,
@@ -55,7 +40,8 @@
 			accessTokenLocal = response;
 		} catch (err) {
 			console.log(err);
-			showErrorAlert(err as string);
+			isLoading = false;
+			showErrorAlert("Couldn't log in!");
 		}
 
 		try {
@@ -69,9 +55,17 @@
 			} else {
 				orgId.set(orgs[0].id);
 				orgName.set(orgs[0].name);
-				goto('/setup');
+				Swal.fire({
+					title: 'Success!',
+					text: `You have been logged in to ${address} as ${username}!`,
+					icon: 'success',
+					confirmButtonText: 'Continue'
+				}).then(() => {
+					goto('/setup');
+				});
 			}
 		} catch (err) {
+			isLoading = false;
 			console.log(err);
 			showErrorAlert(err as string);
 		}
@@ -114,10 +108,15 @@
 					placeholder="Password input"
 					id="password"
 					bind:value={password}
+					on:keypress={(e) => {
+						if (e.key === 'Enter') {
+							login();
+						}
+					}}
 				/>
 			</div>
 		</div>
-		<button class="button" on:click={login}>Submit</button>
+		<button class="button is-primary" on:click={login} class:is-loading={isLoading}>Submit</button>
 	</div>
 </div>
 

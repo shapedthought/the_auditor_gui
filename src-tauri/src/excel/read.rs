@@ -2,8 +2,6 @@ use crate::models::{audit::AuditItem, user::User, group::Group};
 use calamine::{Reader, open_workbook, Xlsx};
 use anyhow::{Result, Error};
 
-
-
 pub fn read_excel(path: String, user: Option<User>, group: Option<Group>) -> Result<Vec<AuditItem>> {
     let mut excel: Xlsx<_> = open_workbook(path)?;
 
@@ -18,8 +16,8 @@ pub fn read_excel(path: String, user: Option<User>, group: Option<Group>) -> Res
     let workbook = excel.worksheet_range(sheet_type).unwrap()?; 
 
     let id_strings = workbook.rows().skip(1).map(|row| {
-        let id = row[0].get_string().unwrap();
-        id.to_string()
+        let name = row[0].get_string().unwrap();
+        name.to_string()
     }).collect::<Vec<String>>();
 
     if user.is_some() {

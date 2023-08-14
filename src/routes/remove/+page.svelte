@@ -2,39 +2,39 @@
 	import { invoke } from '@tauri-apps/api/tauri';
 	import { accessToken, addressSet, orgId } from '../../stores.js';
 	import type { AuthItem, User, Group } from '../../types/auth.type.js';
-	import { SvelteToast, toast } from '@zerodevx/svelte-toast';
 	import Tables from '$lib/tables.svelte';
 	import Swal from 'sweetalert2';
 	import { onMount } from 'svelte';
+	import { showErrorAlert } from '$lib/alerts.svelte';
+	import { Jumper } from 'svelte-loading-spinners';
 
 	let auditId = '';
-
-	function showErrorAlert(err: string) {
-		toast.push('Error!', {
-			theme: {
-				'--toastColor': 'black',
-				'--toastBackground': 'rgba(255,41,50,0.8)',
-				'--toastBarBackground': '#800000'
-			}
-		});
-	}
+	let orgIdLocal = '';
+	let address = '';
+	let accessTokenLocal = '';
+	let authItems: AuthItem[] = [];
+	let users: User[] = [];
+	let groups: Group[] = [];
 
 	function handle_message(message: any) {
 		auditId = message.detail.text;
 		let deleteId = '';
+		let itemName = '';
 		authItems.forEach((item) => {
 			if (item.user != undefined) {
 				if (item.user.id == auditId) {
 					deleteId = item.id;
+					itemName = item.user.name;
 				}
 			} else if (item.group != undefined) {
 				if (item.group.id == auditId) {
 					deleteId = item.id;
+					itemName = item.group.name;
 				}
 			}
 		});
 
-		show_confirmation(auditId, deleteId);
+		show_confirmation(auditId, deleteId, itemName);
 		console.log(`Audit ID: ${auditId}`);
 		console.log(`Delete ID: ${deleteId}`);
 	}
@@ -43,7 +43,8 @@
 		invoke('delete_audit_item', {
 			address: address,
 			token: accessTokenLocal,
-			id: id
+			id: id,
+			orgId: orgIdLocal
 		})
 			.then((data) => {
 				let response = data as string;
@@ -57,17 +58,10 @@
 			});
 	}
 
-	let address = '';
-	let accessTokenLocal = '';
-	let orgIdLocal = '';
-	let authItems: AuthItem[] = [];
-	let users: User[] = [];
-	let groups: Group[] = [];
-
-	function show_confirmation(userId: string, auditId: string) {
+	function show_confirmation(userId: string, auditId: string, itemName: string) {
 		Swal.fire({
 			title: 'Are you sure?',
-			text: `${userId} will be deleted!`,
+			text: `${itemName} will be deleted!`,
 			icon: 'warning',
 			showCancelButton: true,
 			confirmButtonText: 'Yes, delete it!',
@@ -75,7 +69,7 @@
 		}).then((result) => {
 			if (result.isConfirmed) {
 				remove_item(auditId);
-			} else if (result.dismiss === Swal.DismissReason.cancel) {
+			} else {
 				Swal.fire('Cancelled', 'Audit item has been saved :)', 'error');
 			}
 		});
@@ -135,7 +129,10 @@
 <div class="columns is-centered">
 	<div class="column">
 		<h1 class="title">Remove</h1>
+	</div>
+</div>
+<div class="columns">
+	<div class="column">
 		<Tables {users} {groups} on:message={handle_message} />
 	</div>
 </div>
-<SvelteToast />

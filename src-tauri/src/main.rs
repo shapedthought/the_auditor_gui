@@ -45,6 +45,7 @@ async fn login(username: &str, password: &str, address: &str) -> Result<String, 
     let mut profile = Profile::get_profile(VProfile::VB365);
     let (_client, login_response) = VClientBuilder::new(&address.to_string(), username.to_string())
         .insecure()
+        .timeout(5)
         .build(&mut profile)
         .await?;
 
@@ -254,6 +255,7 @@ async fn add_users(address: &str, token: &str, path: &str, org_id: &str) -> Resu
 
 }
 
+
 #[tauri::command]
 async fn add_groups(address: &str, token: &str, path: &str, org_id: &str) -> Result<String, LoginErrorWrapper> {
     let profile = Profile::get_profile(VProfile::VB365);
@@ -268,7 +270,7 @@ async fn add_groups(address: &str, token: &str, path: &str, org_id: &str) -> Res
     println!("Audit URL: {}", audit_url);
     let response: Group = client
         .get(&audit_url)
-        .headers(auth_headers)
+        .headers(auth_headers.clone())
         .send()
         .await
         .unwrap()
@@ -276,22 +278,22 @@ async fn add_groups(address: &str, token: &str, path: &str, org_id: &str) -> Res
         .await
         .unwrap();
 
-        let audit_items = read_excel(path.to_string(), None, Some(response.clone())).unwrap();
+    let audit_items = read_excel(path.to_string(), None, Some(response.clone())).unwrap();
 
-        let url_str = format!("Organizations/{org_id}/AuditItems");
-        let url = build_url(&address.to_string(), &url_str, &profile)?;
+    let url_str = format!("Organizations/{org_id}/AuditItems");
+    let url = build_url(&address.to_string(), &url_str, &profile)?;
     
-        let res = client.post(url).json(&audit_items).send().await.unwrap();
+    let res = client.post(url).headers(auth_headers).json(&audit_items).send().await.unwrap();
     
-        if res.status().is_success() {
-            println!("Groups added OK");
-            Ok("OK".to_string())
-        } else {
-            println!("Error in adding groups");
-            Err(LoginErrorWrapper(LogInError::StatusCodeError(
-                res.status(),
-            )))
-        }
+    if res.status().is_success() {
+        println!("Groups added OK");
+        Ok("OK".to_string())
+    } else {
+        println!("Error in adding groups");
+        Err(LoginErrorWrapper(LogInError::StatusCodeError(
+            res.status(),
+        )))
+    }
 }
 
 #[tauri::command]

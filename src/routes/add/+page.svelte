@@ -4,51 +4,20 @@
 	import type { Group } from '../../types/group.type.js';
 	import { invoke } from '@tauri-apps/api/tauri';
 	import { save, open } from '@tauri-apps/api/dialog';
-	import { SvelteToast, toast } from '@zerodevx/svelte-toast';
-	import { dialog, fs } from '@tauri-apps/api';
+	import { showAlert, showErrorAlert } from '../../lib/alerts.svelte';
 
 	let address = '';
 	let accessTokenLocal = '';
 	let orgIdLocal = '';
 	let users: User;
-	let itemsInBasket = 12;
 	let isActive = true;
 
-	let activeTabValue = 1;
-	let tabs = [
-		{
-			id: 1,
-			label: 'Users'
-		},
-		{
-			id: 2,
-			label: 'Groups'
-		}
-	];
-
-	const handleClick = (tab: { id: number; label: string }) => {
-		activeTabValue = tab.id;
+	let buttonsLoading: { [key: string]: boolean } = {
+		addUsers: false,
+		addGroups: false,
+		getUsers: false,
+		getGroups: false
 	};
-
-	function showAlert(message: string) {
-		toast.push(message, {
-			theme: {
-				'--toastColor': 'mintcream',
-				'--toastBackground': 'rgba(72,187,120,0.9)',
-				'--toastBarBackground': '#2F855A'
-			}
-		});
-	}
-
-	function showErrorAlert(err: string) {
-		toast.push('Error!', {
-			theme: {
-				'--toastColor': 'black',
-				'--toastBackground': 'rgba(255,41,50,0.8)',
-				'--toastBarBackground': '#800000'
-			}
-		});
-	}
 
 	accessToken.subscribe((value) => {
 		accessTokenLocal = value;
@@ -62,11 +31,8 @@
 		orgIdLocal = value;
 	});
 
-	function switchActive() {
-		isActive = !isActive;
-	}
-
 	async function add_users() {
+		buttonsLoading.addUsers = true;
 		let readPath = await open({
 			filters: [
 				{
@@ -75,6 +41,10 @@
 				}
 			]
 		});
+		if (readPath == null) {
+			buttonsLoading.addUsers = false;
+			return;
+		}
 		invoke('add_users', {
 			address: address,
 			token: accessTokenLocal,
@@ -88,12 +58,14 @@
 				console.log(response);
 			})
 			.catch((err) => {
-				showErrorAlert(err);
+				showAlert(err);
 				console.log(err);
 			});
+		buttonsLoading.addUsers = false;
 	}
 
 	async function add_groups() {
+		buttonsLoading.addGroups = true;
 		let readPath = await open({
 			filters: [
 				{
@@ -102,6 +74,10 @@
 				}
 			]
 		});
+		if (readPath == null) {
+			buttonsLoading.addGroups = false;
+			return;
+		}
 		invoke('add_groups', {
 			address: address,
 			token: accessTokenLocal,
@@ -110,17 +86,18 @@
 		})
 			.then((data) => {
 				const response = data as String;
-				showAlert('Added users!');
-				// save_json(users, 'users.json');
+				showAlert('Added groups!');
 				console.log(response);
 			})
 			.catch((err) => {
 				showErrorAlert(err);
 				console.log(err);
 			});
+		buttonsLoading.addGroups = false;
 	}
 
 	async function get_users() {
+		buttonsLoading.getUsers = true;
 		const savePath = await save({
 			defaultPath: 'users.xlsx',
 			filters: [
@@ -130,6 +107,10 @@
 				}
 			]
 		});
+		if (savePath == null) {
+			buttonsLoading.getUsers = false;
+			return;
+		}
 		invoke('get_users', {
 			address: address,
 			token: accessTokenLocal,
@@ -139,16 +120,17 @@
 			.then((data) => {
 				users = data as User;
 				showAlert('Got users!');
-				// save_json(users, 'users.json');
 				console.log(data);
 			})
 			.catch((err) => {
 				showErrorAlert(err);
 				console.log(err);
 			});
+		buttonsLoading.getUsers = false;
 	}
 
 	async function get_groups() {
+		buttonsLoading.getGroups = true;
 		const savePath = await save({
 			defaultPath: 'groups.xlsx',
 			filters: [
@@ -158,6 +140,10 @@
 				}
 			]
 		});
+		if (savePath == null) {
+			buttonsLoading.getGroups = false;
+			return;
+		}
 		invoke('get_groups', {
 			address: address,
 			token: accessTokenLocal,
@@ -173,6 +159,7 @@
 				showErrorAlert(err);
 				console.log(err);
 			});
+		buttonsLoading.getGroups = false;
 	}
 </script>
 
@@ -181,24 +168,6 @@
 		<div class="columns">
 			<div class="column">
 				<h1 class="title">Add</h1>
-			</div>
-			<div class="column is-2">
-				<i class="fa-solid fa-basket-shopping" />
-				<a class="tag is-primary" href="/basket">{itemsInBasket}</a>
-			</div>
-		</div>
-		<div class="column">
-			<div class="tabs">
-				<ul>
-					{#each tabs as tab}
-						<li class={tab.id === activeTabValue ? 'is-active' : ''}>
-							<!-- svelte-ignore a11y-click-events-have-key-events -->
-							<!-- svelte-ignore a11y-no-static-element-interactions -->
-							<!-- svelte-ignore a11y-missing-attribute -->
-							<a on:click={() => handleClick(tab)}>{tab.label}</a>
-						</li>
-					{/each}
-				</ul>
 			</div>
 		</div>
 
@@ -220,9 +189,17 @@
 				<div class="card-header">
 					<p class="card-header-title">Get Users or Groups</p>
 				</div>
-				<div class="card-content">
-					<button class="button mr-2" on:click={get_users}>Get Users</button>
-					<button class="button" on:click={get_groups}>Get Groups</button>
+				<div class="card-content has-text-centered">
+					<button
+						class="button is-primary mr-2"
+						class:is-loading={buttonsLoading.getUsers}
+						on:click={get_users}>Get Users</button
+					>
+					<button
+						class="button is-primary"
+						class:is-loading={buttonsLoading.getGroups}
+						on:click={get_groups}>Get Groups</button
+					>
 				</div>
 			</div>
 		</div>
@@ -232,12 +209,19 @@
 				<div class="card-header">
 					<p class="card-header-title">Add Users or Groups</p>
 				</div>
-				<div class="card-content">
-					<button class="button mr-2" on:click={add_users}>Add Users</button>
-					<button class="button" on:click={add_groups}>Add Groups</button>
+				<div class="card-content has-text-centered">
+					<button
+						class="button is-info mr-2"
+						on:click={add_users}
+						class:is-loading={buttonsLoading.addUsers}>Add Users</button
+					>
+					<button
+						class="button is-info"
+						on:click={add_groups}
+						class:is-loading={buttonsLoading.addGroups}>Add Groups</button
+					>
 				</div>
 			</div>
 		</div>
 	</div>
 </div>
-<SvelteToast />
