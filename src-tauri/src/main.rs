@@ -6,7 +6,7 @@ mod models;
 mod tcplistener;
 mod excel;
 use auth::set_up_auth;
-use models::{audit::AuditItem, notification::NotificationData, org::OrgItem, group::ItemIds};
+use models::{audit::AuditItem, notification::NotificationData, org::{OrgItem, OrgSummary}, group::ItemIds};
 use serde::{Serialize, Serializer};
 use std::env;
 use tauri::http::status::StatusCode;
@@ -42,11 +42,6 @@ impl From<serde_json::Error> for LoginErrorWrapper {
 #[tauri::command]
 async fn login(username: &str, password: &str, address: &str) -> Result<String, LoginErrorWrapper> {
     env::set_var("VEEAM_API_PASSWORD", password);
-    let password = env::var("VEEAM_API_PASSWORD").unwrap();
-    println!(
-        "Logging in with username: {}, password: {}, address: {}",
-        username, password, address
-    );
     let mut profile = Profile::get_profile(VProfile::VB365);
     let (_client, login_response) = VClientBuilder::new(&address.to_string(), username.to_string())
         .insecure()
@@ -57,28 +52,12 @@ async fn login(username: &str, password: &str, address: &str) -> Result<String, 
 }
 
 #[tauri::command]
-async fn get_audit(address: &str, token: &str) -> Result<Vec<AuditItem>, LoginErrorWrapper> {
+async fn get_audit(address: &str, token: &str, org_id: &str) -> Result<Vec<AuditItem>, LoginErrorWrapper> {
     let profile = Profile::get_profile(VProfile::VB365);
     let client = reqwest::Client::builder()
         .danger_accept_invalid_certs(true)
         .build()
         .unwrap();
-
-    let headers = build_auth_headers(&token.to_string(), &profile);
-
-    let end_point = build_url(&address.to_string(), &"Organizations".to_string(), &profile)?;
-
-    let response: Vec<OrgItem> = client
-        .get(&end_point)
-        .headers(headers)
-        .send()
-        .await
-        .unwrap()
-        .json()
-        .await
-        .unwrap();
-
-    let org_id = response[0].id.clone();
 
     let audit_string = format!("Organizations/{}/AuditItems", org_id);
     let audit_url = build_url(&address.to_string(), &audit_string, &profile)?;
@@ -98,7 +77,7 @@ async fn get_audit(address: &str, token: &str) -> Result<Vec<AuditItem>, LoginEr
 }
 
 #[tauri::command]
-async fn get_users(address: &str, token: &str, path: &str) -> Result<User, LoginErrorWrapper> {
+async fn get_users(address: &str, token: &str, path: &str, org_id: &str) -> Result<User, LoginErrorWrapper> {
     let profile = Profile::get_profile(VProfile::VB365);
     let client = reqwest::Client::builder()
         .danger_accept_invalid_certs(true)
@@ -106,21 +85,6 @@ async fn get_users(address: &str, token: &str, path: &str) -> Result<User, Login
         .unwrap();
 
     let headers = build_auth_headers(&token.to_string(), &profile);
-
-    let end_point = build_url(&address.to_string(), &"Organizations".to_string(), &profile)?;
-
-    let response: Vec<OrgItem> = client
-        .get(&end_point)
-        .headers(headers.clone())
-        .send()
-        .await
-        .unwrap()
-        .json()
-        .await
-        .unwrap();
-
-    let org_id = response[0].id.clone();
-
     let user_string = format!("Organizations/{}/Users", org_id);
     let audit_url = build_url(&address.to_string(), &user_string, &profile)?;
 
@@ -140,28 +104,12 @@ async fn get_users(address: &str, token: &str, path: &str) -> Result<User, Login
 }
 
 #[tauri::command]
-async fn get_groups(address: &str, token: &str, path: &str) -> Result<Group, LoginErrorWrapper> {
+async fn get_groups(address: &str, token: &str, path: &str, org_id: &str) -> Result<Group, LoginErrorWrapper> {
     let profile = Profile::get_profile(VProfile::VB365);
     let client = reqwest::Client::builder()
         .danger_accept_invalid_certs(true)
         .build()
         .unwrap();
-
-    let headers = build_auth_headers(&token.to_string(), &profile);
-
-    let end_point = build_url(&address.to_string(), &"Organizations".to_string(), &profile)?;
-
-    let response: Vec<OrgItem> = client
-        .get(&end_point)
-        .headers(headers)
-        .send()
-        .await
-        .unwrap()
-        .json()
-        .await
-        .unwrap();
-
-    let org_id = response[0].id.clone();
 
     let user_string = format!("Organizations/{}/Groups", org_id);
     let audit_url = build_url(&address.to_string(), &user_string, &profile)?;
@@ -235,16 +183,16 @@ async fn setup_notifications(
 }
 
 #[tauri::command]
-async fn add_users(address: &str, token: &str, path: &str) -> Result<String, LoginErrorWrapper> {
-    let profile = Profile::get_profile(VProfile::VB365);
+async fn get_orgs(address: &str, token: &str) -> Result<Vec<OrgSummary>, LoginErrorWrapper> {
+    let profiles = Profile::get_profile(VProfile::VB365);
     let client = reqwest::Client::builder()
         .danger_accept_invalid_certs(true)
         .build()
         .unwrap();
 
-    let headers = build_auth_headers(&token.to_string(), &profile);
+    let headers = build_auth_headers(&token.to_string(), &profiles);
 
-    let end_point = build_url(&address.to_string(), &"Organizations".to_string(), &profile)?;
+    let end_point = build_url(&address.to_string(), &"Organizations".to_string(), &profiles)?;
 
     let response: Vec<OrgItem> = client
         .get(&end_point)
@@ -256,7 +204,18 @@ async fn add_users(address: &str, token: &str, path: &str) -> Result<String, Log
         .await
         .unwrap();
 
-    let org_id = response[0].id.clone();
+    let orgs: Vec<OrgSummary> = response.into_iter().map(|org| org.into()).collect();
+
+    Ok(orgs)
+}
+
+#[tauri::command]
+async fn add_users(address: &str, token: &str, path: &str, org_id: &str) -> Result<String, LoginErrorWrapper> {
+    let profile = Profile::get_profile(VProfile::VB365);
+    let client = reqwest::Client::builder()
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap();
 
     let user_string = format!("Organizations/{}/Users", org_id);
     let audit_url = build_url(&address.to_string(), &user_string, &profile)?;
@@ -264,7 +223,7 @@ async fn add_users(address: &str, token: &str, path: &str) -> Result<String, Log
     println!("Audit URL: {}", audit_url);
     let response: User = client
         .get(&audit_url)
-        .headers(auth_headers)
+        .headers(auth_headers.clone())
         .send()
         .await
         .unwrap()
@@ -277,7 +236,7 @@ async fn add_users(address: &str, token: &str, path: &str) -> Result<String, Log
     let url_str = format!("Organizations/{}/AuditItems", org_id);
     let url = build_url(&address.to_string(), &url_str, &profile)?;
 
-    let res = client.post(url).headers(headers.clone()).json(&audit_items).send().await.unwrap();
+    let res = client.post(url).headers(auth_headers).json(&audit_items).send().await.unwrap();
 
     let status = res.status();
 
@@ -296,28 +255,12 @@ async fn add_users(address: &str, token: &str, path: &str) -> Result<String, Log
 }
 
 #[tauri::command]
-async fn add_groups(address: &str, token: &str, path: &str) -> Result<String, LoginErrorWrapper> {
+async fn add_groups(address: &str, token: &str, path: &str, org_id: &str) -> Result<String, LoginErrorWrapper> {
     let profile = Profile::get_profile(VProfile::VB365);
     let client = reqwest::Client::builder()
         .danger_accept_invalid_certs(true)
         .build()
         .unwrap();
-
-    let headers = build_auth_headers(&token.to_string(), &profile);
-
-    let end_point = build_url(&address.to_string(), &"Organizations".to_string(), &profile)?;
-
-    let response: Vec<OrgItem> = client
-        .get(&end_point)
-        .headers(headers)
-        .send()
-        .await
-        .unwrap()
-        .json()
-        .await
-        .unwrap();
-
-    let org_id = response[0].id.clone();
 
     let user_string = format!("Organizations/{}/Groups", org_id);
     let audit_url = build_url(&address.to_string(), &user_string, &profile)?;
@@ -352,7 +295,7 @@ async fn add_groups(address: &str, token: &str, path: &str) -> Result<String, Lo
 }
 
 #[tauri::command]
-async fn delete_audit_item(address: &str, token: &str, id: &str) -> Result<String, LoginErrorWrapper> {
+async fn delete_audit_item(address: &str, token: &str, id: &str, org_id: &str) -> Result<String, LoginErrorWrapper> {
     let profile = Profile::get_profile(VProfile::VB365);
     let client = reqwest::Client::builder()
         .danger_accept_invalid_certs(true)
@@ -360,20 +303,6 @@ async fn delete_audit_item(address: &str, token: &str, id: &str) -> Result<Strin
         .unwrap();
 
     let headers = build_auth_headers(&token.to_string(), &profile);
-
-    let end_point = build_url(&address.to_string(), &"Organizations".to_string(), &profile)?;
-
-    let response: Vec<OrgItem> = client
-        .get(&end_point)
-        .headers(headers.clone())
-        .send()
-        .await
-        .unwrap()
-        .json()
-        .await
-        .unwrap();
-
-    let org_id = response[0].id.clone();
 
     let url = build_url(
         &address.to_string(),
@@ -407,7 +336,7 @@ async fn delete_audit_item(address: &str, token: &str, id: &str) -> Result<Strin
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
-            login, get_audit, get_users, get_groups, setup_notifications, add_users, add_groups, delete_audit_item
+            login, get_audit, get_users, get_groups, setup_notifications, add_users, add_groups, delete_audit_item, get_orgs
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

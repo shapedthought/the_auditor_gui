@@ -24,6 +24,22 @@ pub struct OrgItem {
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct OrgSummary {
+    pub name: String,
+    pub id: String,
+}
+
+impl From<OrgItem> for OrgSummary {
+    fn from(org: OrgItem) -> Self {
+        OrgSummary {
+            name: org.name,
+            id: org.id,
+        }
+    }
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ExchangeOnlineSettings {
     pub use_application_only_auth: bool,
     pub account: String,

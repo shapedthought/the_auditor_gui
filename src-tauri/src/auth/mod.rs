@@ -35,12 +35,8 @@ pub async fn set_up_auth(
     println!("Opening browser to sign in...");
     webbrowser::open(&response.sign_in_url)?;
 
-    // let mut url_file = fs::File::create(&"callback.txt".to_string())?;
-    // url_file.write_all(b"replace this text")?;
-
     println!("Please sign in, this program will listen for the data from the call back.");
-    // press_btn_continue::wait("Press any key to continue...\n").unwrap();
-    // let url_string = fs::read_to_string("callback.txt")?;
+
     let url_string = run_tcp_listener("http://localhost".to_string()).await?;
     if url_string.is_empty() {
         return Err(anyhow::anyhow!("The URL was empty"));
@@ -79,5 +75,4 @@ pub async fn set_up_auth(
         Err(anyhow::anyhow!("Authentication failed! {:?}", reason))
     }
 
-    // Ok(complete_response)
 }

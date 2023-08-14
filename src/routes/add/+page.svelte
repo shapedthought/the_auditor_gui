@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { accessToken, addressSet } from '../../stores.js';
+	import { accessToken, addressSet, orgId } from '../../stores.js';
 	import type { User } from '../../types/user.type.js';
 	import type { Group } from '../../types/group.type.js';
 	import { invoke } from '@tauri-apps/api/tauri';
@@ -7,12 +7,28 @@
 	import { SvelteToast, toast } from '@zerodevx/svelte-toast';
 	import { dialog, fs } from '@tauri-apps/api';
 
-	let filePath: object = {};
-	let fileName = '';
-	let selectedType = 'Users';
 	let address = '';
 	let accessTokenLocal = '';
+	let orgIdLocal = '';
 	let users: User;
+	let itemsInBasket = 12;
+	let isActive = true;
+
+	let activeTabValue = 1;
+	let tabs = [
+		{
+			id: 1,
+			label: 'Users'
+		},
+		{
+			id: 2,
+			label: 'Groups'
+		}
+	];
+
+	const handleClick = (tab: { id: number; label: string }) => {
+		activeTabValue = tab.id;
+	};
 
 	function showAlert(message: string) {
 		toast.push(message, {
@@ -42,6 +58,14 @@
 		address = value;
 	});
 
+	orgId.subscribe((value) => {
+		orgIdLocal = value;
+	});
+
+	function switchActive() {
+		isActive = !isActive;
+	}
+
 	async function add_users() {
 		let readPath = await open({
 			filters: [
@@ -54,7 +78,8 @@
 		invoke('add_users', {
 			address: address,
 			token: accessTokenLocal,
-			path: readPath
+			path: readPath,
+			orgId: orgIdLocal
 		})
 			.then((data) => {
 				const response = data as String;
@@ -80,7 +105,8 @@
 		invoke('add_groups', {
 			address: address,
 			token: accessTokenLocal,
-			path: readPath
+			path: readPath,
+			orgId: orgIdLocal
 		})
 			.then((data) => {
 				const response = data as String;
@@ -92,24 +118,6 @@
 				showErrorAlert(err);
 				console.log(err);
 			});
-	}
-
-	async function save_json(jsonData: User | Group, fileName: string) {
-		const filePath = await dialog.save({
-			defaultPath: fileName,
-			filters: [
-				{
-					name: 'JSON',
-					extensions: ['json']
-				}
-			]
-		});
-		if (filePath != null) {
-			// need to change this
-			fs.writeFile(filePath, JSON.stringify(jsonData));
-		} else {
-			showErrorAlert('No file path selected!');
-		}
 	}
 
 	async function get_users() {
@@ -125,7 +133,8 @@
 		invoke('get_users', {
 			address: address,
 			token: accessTokenLocal,
-			path: savePath
+			path: savePath,
+			orgId: orgIdLocal
 		})
 			.then((data) => {
 				users = data as User;
@@ -152,7 +161,8 @@
 		invoke('get_groups', {
 			address: address,
 			token: accessTokenLocal,
-			path: savePath
+			path: savePath,
+			orgId: orgIdLocal
 		})
 			.then((data) => {
 				users = data as Group;
@@ -166,41 +176,68 @@
 	}
 </script>
 
-<h1 class="title">Add</h1>
+<div class="columns is-centered">
+	<div class="column">
+		<div class="columns">
+			<div class="column">
+				<h1 class="title">Add</h1>
+			</div>
+			<div class="column is-2">
+				<i class="fa-solid fa-basket-shopping" />
+				<a class="tag is-primary" href="/basket">{itemsInBasket}</a>
+			</div>
+		</div>
+		<div class="column">
+			<div class="tabs">
+				<ul>
+					{#each tabs as tab}
+						<li class={tab.id === activeTabValue ? 'is-active' : ''}>
+							<!-- svelte-ignore a11y-click-events-have-key-events -->
+							<!-- svelte-ignore a11y-no-static-element-interactions -->
+							<!-- svelte-ignore a11y-missing-attribute -->
+							<a on:click={() => handleClick(tab)}>{tab.label}</a>
+						</li>
+					{/each}
+				</ul>
+			</div>
+		</div>
 
-<div class="column">
-	<div class="card card-content">
-		<p>
-			To add users or groups first click on the "Get" button, this will save Users or Groups to an
-			Excel file
-		</p>
-		<p>Then you can edit the Excel file remove users or groups you do not want to Audit.</p>
-		<p>Then click on either the "Add Users" or "Add Groups" buttons to add them to the Audit.</p>
-		<p>Note: Do not change the sheet name or the structure of the columns!</p>
+		<div class="column">
+			<div class="card card-content">
+				<p>
+					To add users or groups first click on the "Get" button, this will save Users or Groups to
+					an Excel file
+				</p>
+				<p>Then you can edit the Excel file remove users or groups you do not want to Audit.</p>
+				<p>
+					Then click on either the "Add Users" or "Add Groups" buttons to add them to the Audit.
+				</p>
+				<p>Note: Do not change the sheet name or the structure of the columns!</p>
+			</div>
+		</div>
+		<div class="column">
+			<div class="card">
+				<div class="card-header">
+					<p class="card-header-title">Get Users or Groups</p>
+				</div>
+				<div class="card-content">
+					<button class="button mr-2" on:click={get_users}>Get Users</button>
+					<button class="button" on:click={get_groups}>Get Groups</button>
+				</div>
+			</div>
+		</div>
+
+		<div class="column">
+			<div class="card">
+				<div class="card-header">
+					<p class="card-header-title">Add Users or Groups</p>
+				</div>
+				<div class="card-content">
+					<button class="button mr-2" on:click={add_users}>Add Users</button>
+					<button class="button" on:click={add_groups}>Add Groups</button>
+				</div>
+			</div>
+		</div>
 	</div>
 </div>
-<div class="column">
-	<div class="card">
-		<div class="card-header">
-			<p class="card-header-title">Get Users or Groups</p>
-		</div>
-		<div class="card-content">
-			<button class="button mr-2" on:click={get_users}>Get Users</button>
-			<button class="button" on:click={get_groups}>Get Groups</button>
-		</div>
-	</div>
-</div>
-
-<div class="column">
-	<div class="card">
-		<div class="card-header">
-			<p class="card-header-title">Add Users or Groups</p>
-		</div>
-		<div class="card-content">
-			<button class="button mr-2" on:click={add_users}>Add Users</button>
-			<button class="button" on:click={add_groups}>Add Groups</button>
-		</div>
-	</div>
-</div>
-
 <SvelteToast />
