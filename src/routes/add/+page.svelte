@@ -31,7 +31,7 @@
 		orgIdLocal = value;
 	});
 
-	async function add_users() {
+	async function addUsers() {
 		buttonsLoading.addUsers = true;
 		let readPath = await open({
 			filters: [
@@ -64,7 +64,7 @@
 		buttonsLoading.addUsers = false;
 	}
 
-	async function add_groups() {
+	async function addGroups() {
 		buttonsLoading.addGroups = true;
 		let readPath = await open({
 			filters: [
@@ -96,7 +96,7 @@
 		buttonsLoading.addGroups = false;
 	}
 
-	async function get_users() {
+	async function getUsers() {
 		buttonsLoading.getUsers = true;
 		const savePath = await save({
 			defaultPath: 'users.xlsx',
@@ -129,7 +129,7 @@
 		buttonsLoading.getUsers = false;
 	}
 
-	async function get_groups() {
+	async function getGroups() {
 		buttonsLoading.getGroups = true;
 		const savePath = await save({
 			defaultPath: 'groups.xlsx',
@@ -193,12 +193,12 @@
 					<button
 						class="button is-primary mr-2"
 						class:is-loading={buttonsLoading.getUsers}
-						on:click={get_users}>Get Users</button
+						on:click={getUsers}>Get Users</button
 					>
 					<button
 						class="button is-primary"
 						class:is-loading={buttonsLoading.getGroups}
-						on:click={get_groups}>Get Groups</button
+						on:click={getGroups}>Get Groups</button
 					>
 				</div>
 			</div>
@@ -212,12 +212,12 @@
 				<div class="card-content has-text-centered">
 					<button
 						class="button is-info mr-2"
-						on:click={add_users}
+						on:click={addUsers}
 						class:is-loading={buttonsLoading.addUsers}>Add Users</button
 					>
 					<button
 						class="button is-info"
-						on:click={add_groups}
+						on:click={addGroups}
 						class:is-loading={buttonsLoading.addGroups}>Add Groups</button
 					>
 				</div>

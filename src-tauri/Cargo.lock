@@ -76,6 +76,7 @@ dependencies = [
  "serde_json",
  "tauri",
  "tauri-build",
+ "thiserror",
  "vauth",
  "webbrowser",
 ]
@@ -2437,9 +2438,9 @@ dependencies = [
 
 [[package]]
 name = "rust_xlsxwriter"
-version = "0.44.0"
+version = "0.45.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23924c75913240a14e9c599dabc09ce7c40398ec31eaf6dc299f3a5d22720bc1"
+checksum = "be540a14e90dc08849c21b5da22398f7dbbf7df606fed67a52c1e6325b403abe"
 dependencies = [
  "lazy_static",
  "regex",

@@ -11,7 +11,6 @@ use serde::{Serialize, Serializer};
 use std::env;
 use tauri::http::status::StatusCode;
 use vauth::{build_auth_headers, build_url, LogInError, Profile, VClientBuilder, VProfile};
-
 use crate::{models::{group::Group, user::User}, excel::{write::write_excel, read::read_excel}};
 
 struct LoginErrorWrapper(LogInError);
@@ -39,6 +38,26 @@ impl From<serde_json::Error> for LoginErrorWrapper {
     }
 }
 
+impl From<reqwest::Error> for LoginErrorWrapper {
+    fn from(error: reqwest::Error) -> Self {
+        LoginErrorWrapper(LogInError::ReqwestError(error))
+    }
+}
+
+impl From<env::VarError> for LoginErrorWrapper {
+    fn from(error: env::VarError) -> Self {
+        LoginErrorWrapper(LogInError::EnvError(error))
+    }
+}
+
+impl From<anyhow::Error> for LoginErrorWrapper {
+    fn from(_error: anyhow::Error) -> Self {
+        LoginErrorWrapper(LogInError::StatusCodeError(
+            StatusCode::INTERNAL_SERVER_ERROR,
+        ))
+    }
+}
+
 #[tauri::command]
 async fn login(username: &str, password: &str, address: &str) -> Result<String, LoginErrorWrapper> {
     env::set_var("VEEAM_API_PASSWORD", password);
@@ -57,8 +76,7 @@ async fn get_audit(address: &str, token: &str, org_id: &str) -> Result<Vec<Audit
     let profile = Profile::get_profile(VProfile::VB365);
     let client = reqwest::Client::builder()
         .danger_accept_invalid_certs(true)
-        .build()
-        .unwrap();
+        .build()?;
 
     let audit_string = format!("Organizations/{}/AuditItems", org_id);
     let audit_url = build_url(&address.to_string(), &audit_string, &profile)?;
@@ -68,11 +86,9 @@ async fn get_audit(address: &str, token: &str, org_id: &str) -> Result<Vec<Audit
         .get(&audit_url)
         .headers(auth_headers)
         .send()
-        .await
-        .unwrap()
+        .await?
         .json()
-        .await
-        .unwrap();
+        .await?;
 
     Ok(response)
 }
@@ -82,8 +98,7 @@ async fn get_users(address: &str, token: &str, path: &str, org_id: &str) -> Resu
     let profile = Profile::get_profile(VProfile::VB365);
     let client = reqwest::Client::builder()
         .danger_accept_invalid_certs(true)
-        .build()
-        .unwrap();
+        .build()?;
 
     let headers = build_auth_headers(&token.to_string(), &profile);
     let user_string = format!("Organizations/{}/Users", org_id);
@@ -94,13 +109,11 @@ async fn get_users(address: &str, token: &str, path: &str, org_id: &str) -> Resu
         .get(&audit_url)
         .headers(headers)
         .send()
-        .await
-        .unwrap()
+        .await?
         .json()
-        .await
-        .unwrap();
+        .await?;
 
-    write_excel(path.to_string(), Some(response.clone()), None).unwrap();
+    write_excel(path.to_string(), Some(response.clone()), None)?;
     Ok(response)
 }
 
@@ -109,8 +122,7 @@ async fn get_groups(address: &str, token: &str, path: &str, org_id: &str) -> Res
     let profile = Profile::get_profile(VProfile::VB365);
     let client = reqwest::Client::builder()
         .danger_accept_invalid_certs(true)
-        .build()
-        .unwrap();
+        .build()?;
 
     let user_string = format!("Organizations/{}/Groups", org_id);
     let audit_url = build_url(&address.to_string(), &user_string, &profile)?;
@@ -120,13 +132,11 @@ async fn get_groups(address: &str, token: &str, path: &str, org_id: &str) -> Res
         .get(&audit_url)
         .headers(auth_headers)
         .send()
-        .await
-        .unwrap()
+        .await?
         .json()
-        .await
-        .unwrap();
+        .await?;
 
-        write_excel(path.to_string(), None, Some(response.clone())).unwrap();
+        write_excel(path.to_string(), None, Some(response.clone()))?;
     Ok(response)
 }
 
@@ -145,12 +155,10 @@ async fn setup_notifications(
     let client = reqwest::Client::builder()
         .danger_accept_invalid_certs(true)
         .default_headers(auth_headers)
-        .build()
-        .unwrap();
+        .build()?;
 
     let complete_response = set_up_auth(&address.to_string(), &profile, &client)
-        .await
-        .unwrap();
+        .await?;
     
     println!("Setting up notification data to send");
     let nd = NotificationData {
@@ -170,7 +178,7 @@ async fn setup_notifications(
     )?;
     
     println!("Sending notification data to {}", url);
-    let response = client.put(&url).json(&nd).send().await.unwrap();
+    let response = client.put(&url).json(&nd).send().await?;
 
     if response.status().is_success() {
         println!("Settings set OK");
@@ -188,8 +196,7 @@ async fn get_orgs(address: &str, token: &str) -> Result<Vec<OrgSummary>, LoginEr
     let profiles = Profile::get_profile(VProfile::VB365);
     let client = reqwest::Client::builder()
         .danger_accept_invalid_certs(true)
-        .build()
-        .unwrap();
+        .build()?;
 
     let headers = build_auth_headers(&token.to_string(), &profiles);
 
@@ -199,11 +206,9 @@ async fn get_orgs(address: &str, token: &str) -> Result<Vec<OrgSummary>, LoginEr
         .get(&end_point)
         .headers(headers.clone())
         .send()
-        .await
-        .unwrap()
+        .await?
         .json()
-        .await
-        .unwrap();
+        .await?;
 
     let orgs: Vec<OrgSummary> = response.into_iter().map(|org| org.into()).collect();
 
@@ -215,8 +220,7 @@ async fn add_users(address: &str, token: &str, path: &str, org_id: &str) -> Resu
     let profile = Profile::get_profile(VProfile::VB365);
     let client = reqwest::Client::builder()
         .danger_accept_invalid_certs(true)
-        .build()
-        .unwrap();
+        .build()?;
 
     let user_string = format!("Organizations/{}/Users", org_id);
     let audit_url = build_url(&address.to_string(), &user_string, &profile)?;
@@ -226,18 +230,16 @@ async fn add_users(address: &str, token: &str, path: &str, org_id: &str) -> Resu
         .get(&audit_url)
         .headers(auth_headers.clone())
         .send()
-        .await
-        .unwrap()
+        .await?
         .json()
-        .await
-        .unwrap();
+        .await?;
 
-    let audit_items = read_excel(path.to_string(), Some(response.clone()), None).unwrap();
+    let audit_items = read_excel(path.to_string(), Some(response.clone()), None)?;
 
     let url_str = format!("Organizations/{}/AuditItems", org_id);
     let url = build_url(&address.to_string(), &url_str, &profile)?;
 
-    let res = client.post(url).headers(auth_headers).json(&audit_items).send().await.unwrap();
+    let res = client.post(url).headers(auth_headers).json(&audit_items).send().await?;
 
     let status = res.status();
 
@@ -246,7 +248,7 @@ async fn add_users(address: &str, token: &str, path: &str, org_id: &str) -> Resu
         Ok("OK".to_string())
     } else {
         println!("Error in adding users");
-        let response_str = res.text().await.unwrap().clone();
+        let response_str = res.text().await?.clone();
         println!("Response: {}", response_str);
         Err(LoginErrorWrapper(LogInError::StatusCodeError(
             status,
@@ -261,8 +263,7 @@ async fn add_groups(address: &str, token: &str, path: &str, org_id: &str) -> Res
     let profile = Profile::get_profile(VProfile::VB365);
     let client = reqwest::Client::builder()
         .danger_accept_invalid_certs(true)
-        .build()
-        .unwrap();
+        .build()?;
 
     let user_string = format!("Organizations/{}/Groups", org_id);
     let audit_url = build_url(&address.to_string(), &user_string, &profile)?;
@@ -272,18 +273,16 @@ async fn add_groups(address: &str, token: &str, path: &str, org_id: &str) -> Res
         .get(&audit_url)
         .headers(auth_headers.clone())
         .send()
-        .await
-        .unwrap()
+        .await?
         .json()
-        .await
-        .unwrap();
+        .await?;
 
-    let audit_items = read_excel(path.to_string(), None, Some(response.clone())).unwrap();
+    let audit_items = read_excel(path.to_string(), None, Some(response.clone()))?;
 
     let url_str = format!("Organizations/{org_id}/AuditItems");
     let url = build_url(&address.to_string(), &url_str, &profile)?;
     
-    let res = client.post(url).headers(auth_headers).json(&audit_items).send().await.unwrap();
+    let res = client.post(url).headers(auth_headers).json(&audit_items).send().await?;
     
     if res.status().is_success() {
         println!("Groups added OK");
@@ -301,8 +300,7 @@ async fn delete_audit_item(address: &str, token: &str, id: &str, org_id: &str) -
     let profile = Profile::get_profile(VProfile::VB365);
     let client = reqwest::Client::builder()
         .danger_accept_invalid_certs(true)
-        .build()
-        .unwrap();
+        .build()?;
 
     let headers = build_auth_headers(&token.to_string(), &profile);
 
@@ -318,7 +316,7 @@ async fn delete_audit_item(address: &str, token: &str, id: &str, org_id: &str) -
 
     println!("Deleting item with id: {}", id);
 
-    let response = client.post(url).headers(headers).json(&item_ids).send().await.unwrap();
+    let response = client.post(url).headers(headers).json(&item_ids).send().await?;
 
     let status = response.status();
 
@@ -327,7 +325,7 @@ async fn delete_audit_item(address: &str, token: &str, id: &str, org_id: &str) -
         Ok("OK".to_string())
     } else {
         println!("Error in deleting items");
-        let response_str = response.text().await.unwrap().clone();
+        let response_str = response.text().await?.clone();
         println!("Response: {}", response_str);
         Err(LoginErrorWrapper(LogInError::StatusCodeError(
            status,
