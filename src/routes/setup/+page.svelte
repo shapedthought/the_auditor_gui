@@ -2,9 +2,8 @@
 	import { accessToken, addressSet } from '../../stores.js';
 	import { invoke } from '@tauri-apps/api';
 	import Swal from 'sweetalert2';
-	let useSmtp = false;
-	let useExisting = true;
 
+	let isLoading = false;
 	let userId = '';
 	let from = '';
 	let to = '';
@@ -31,6 +30,7 @@
 	});
 
 	async function setUpNotifications() {
+		isLoading = true;
 		invoke('setup_notifications', {
 			address: address,
 			token: accessTokenLocal,
@@ -55,36 +55,48 @@
 					text: err
 				});
 			});
+		isLoading = false;
 	}
 </script>
 
-<h1 class="title">Set up</h1>
-<p>Current implementation only works with Microsoft with an existing Azure application.</p>
+<div class="columns is-centered">
+	<div class="column is-two-thirds">
+		<h1 class="title">Set up</h1>
+		<p>Current implementation only works with Microsoft with an existing Azure application.</p>
 
-<div class="column" on:change={enableButton}>
-	<div class="field">
-		<label class="label" for="userId">User ID</label>
-		<div class="control">
-			<input class="input" type="text" id="userId" bind:value={userId} />
+		<div class="column" on:change={enableButton}>
+			<div class="field">
+				<label class="label" for="userId">User ID</label>
+				<div class="control">
+					<input class="input" type="text" id="userId" bind:value={userId} />
+				</div>
+			</div>
+			<div class="field">
+				<label class="label" for="from">From</label>
+				<div class="control">
+					<input class="input" type="text" id="from" bind:value={from} />
+				</div>
+			</div>
+			<div class="field">
+				<label class="label" for="to">To</label>
+				<div class="control">
+					<input class="input" type="text" id="to" bind:value={to} />
+				</div>
+			</div>
+			<div class="field">
+				<label class="label" for="subject">Subject</label>
+				<div class="control">
+					<input class="input" type="text" id="subject" bind:value={subject} />
+				</div>
+			</div>
+			<button class="button is-info" disabled={buttonDisabled} on:click={setUpNotifications}
+				>Run Setup</button
+			>
 		</div>
+		{#if isLoading}
+			<div class="column">
+				<p class="has-text-centered">Sign into your M365 account in the window that has opened.</p>
+			</div>
+		{/if}
 	</div>
-	<div class="field">
-		<label class="label" for="from">From</label>
-		<div class="control">
-			<input class="input" type="text" id="from" bind:value={from} />
-		</div>
-	</div>
-	<div class="field">
-		<label class="label" for="to">To</label>
-		<div class="control">
-			<input class="input" type="text" id="to" bind:value={to} />
-		</div>
-	</div>
-	<div class="field">
-		<label class="label" for="subject">Subject</label>
-		<div class="control">
-			<input class="input" type="text" id="subject" bind:value={subject} />
-		</div>
-	</div>
-	<button class="button" disabled={buttonDisabled} on:click={setUpNotifications}>Run Setup</button>
 </div>

@@ -18,3 +18,9 @@
 		{/if}
 	</ul>
 </aside>
+
+<style>
+	.menu {
+		border-right: 1px solid rgb(119, 118, 118);
+	}
+</style>

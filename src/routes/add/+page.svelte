@@ -1,37 +1,23 @@
 <script lang="ts">
-	import { accessToken, addressSet } from '../../stores.js';
+	import { accessToken, addressSet, orgId } from '../../stores.js';
 	import type { User } from '../../types/user.type.js';
 	import type { Group } from '../../types/group.type.js';
 	import { invoke } from '@tauri-apps/api/tauri';
-	import { SvelteToast, toast } from '@zerodevx/svelte-toast';
-	import { dialog, fs } from '@tauri-apps/api';
+	import { save, open } from '@tauri-apps/api/dialog';
+	import { showAlert, showErrorAlert } from '../../lib/alerts.svelte';
 
-	let filePath: object = {};
-	let fileName = '';
-	let selectedType = 'Users';
 	let address = '';
 	let accessTokenLocal = '';
+	let orgIdLocal = '';
 	let users: User;
+	let isActive = true;
 
-	function showAlert(message: string) {
-		toast.push(message, {
-			theme: {
-				'--toastColor': 'mintcream',
-				'--toastBackground': 'rgba(72,187,120,0.9)',
-				'--toastBarBackground': '#2F855A'
-			}
-		});
-	}
-
-	function showErrorAlert(err: string) {
-		toast.push('Error!', {
-			theme: {
-				'--toastColor': 'black',
-				'--toastBackground': 'rgba(255,41,50,0.8)',
-				'--toastBarBackground': '#800000'
-			}
-		});
-	}
+	let buttonsLoading: { [key: string]: boolean } = {
+		addUsers: false,
+		addGroups: false,
+		getUsers: false,
+		getGroups: false
+	};
 
 	accessToken.subscribe((value) => {
 		accessTokenLocal = value;
@@ -41,121 +27,201 @@
 		address = value;
 	});
 
-	function handleFileInput(event: any) {
-		filePath = event.target.files[0];
-		fileName = event.target.files[0].name;
+	orgId.subscribe((value) => {
+		orgIdLocal = value;
+	});
 
-		console.log(filePath);
-	}
-
-	async function save_json(jsonData: User | Group, fileName: string) {
-		const filePath = await dialog.save({
-			defaultPath: fileName,
+	async function addUsers() {
+		buttonsLoading.addUsers = true;
+		let readPath = await open({
 			filters: [
 				{
-					name: 'JSON',
-					extensions: ['json']
+					name: 'excel',
+					extensions: ['xlsx']
 				}
 			]
 		});
-		if (filePath != null) {
-			fs.writeFile(filePath, JSON.stringify(jsonData));
-		} else {
-			showErrorAlert('No file path selected!');
+		if (readPath == null) {
+			buttonsLoading.addUsers = false;
+			return;
 		}
+		invoke('add_users', {
+			address: address,
+			token: accessTokenLocal,
+			path: readPath,
+			orgId: orgIdLocal
+		})
+			.then((data) => {
+				const response = data as String;
+				showAlert('Added users!');
+				// save_json(users, 'users.json');
+				console.log(response);
+			})
+			.catch((err) => {
+				showAlert(err);
+				console.log(err);
+			});
+		buttonsLoading.addUsers = false;
 	}
 
-	async function get_users() {
+	async function addGroups() {
+		buttonsLoading.addGroups = true;
+		let readPath = await open({
+			filters: [
+				{
+					name: 'excel',
+					extensions: ['xlsx']
+				}
+			]
+		});
+		if (readPath == null) {
+			buttonsLoading.addGroups = false;
+			return;
+		}
+		invoke('add_groups', {
+			address: address,
+			token: accessTokenLocal,
+			path: readPath,
+			orgId: orgIdLocal
+		})
+			.then((data) => {
+				const response = data as String;
+				showAlert('Added groups!');
+				console.log(response);
+			})
+			.catch((err) => {
+				showErrorAlert(err);
+				console.log(err);
+			});
+		buttonsLoading.addGroups = false;
+	}
+
+	async function getUsers() {
+		buttonsLoading.getUsers = true;
+		const savePath = await save({
+			defaultPath: 'users.xlsx',
+			filters: [
+				{
+					name: 'excel',
+					extensions: ['xlsx']
+				}
+			]
+		});
+		if (savePath == null) {
+			buttonsLoading.getUsers = false;
+			return;
+		}
 		invoke('get_users', {
 			address: address,
-			token: accessTokenLocal
+			token: accessTokenLocal,
+			path: savePath,
+			orgId: orgIdLocal
 		})
 			.then((data) => {
 				users = data as User;
 				showAlert('Got users!');
-				save_json(users, 'users.json');
 				console.log(data);
 			})
 			.catch((err) => {
 				showErrorAlert(err);
 				console.log(err);
 			});
+		buttonsLoading.getUsers = false;
 	}
 
-	async function get_groups() {
+	async function getGroups() {
+		buttonsLoading.getGroups = true;
+		const savePath = await save({
+			defaultPath: 'groups.xlsx',
+			filters: [
+				{
+					name: 'excel',
+					extensions: ['xlsx']
+				}
+			]
+		});
+		if (savePath == null) {
+			buttonsLoading.getGroups = false;
+			return;
+		}
 		invoke('get_groups', {
 			address: address,
-			token: accessTokenLocal
+			token: accessTokenLocal,
+			path: savePath,
+			orgId: orgIdLocal
 		})
 			.then((data) => {
 				users = data as Group;
 				showAlert('Got Groups!');
-				save_json(users, 'groups.json');
 				console.log(data);
 			})
 			.catch((err) => {
 				showErrorAlert(err);
 				console.log(err);
 			});
+		buttonsLoading.getGroups = false;
 	}
 </script>
 
-<h1 class="title">Add</h1>
-
-<div class="column">
-	<div class="card">
-		<div class="card-header">
-			<p class="card-header-title">Get Users or Groups</p>
-		</div>
-		<div class="card-content">
-			<button class="button mr-2" on:click={get_users}>Get Users</button>
-			<button class="button" on:click={get_groups}>Get Groups</button>
-		</div>
-	</div>
-</div>
-
-<div class="column">
-	<div class="card">
-		<div class="card-header">
-			<p class="card-header-title">Add Users or Groups</p>
-		</div>
-		<div class="card-content">
-			<div class="file">
-				<label class="file-label">
-					<input
-						class="file-input"
-						type="file"
-						accept=".json"
-						name="resume"
-						on:input={handleFileInput}
-					/>
-					<span class="file-cta">
-						<span class="file-label"> Choose a file… </span>
-					</span>
-				</label>
-			</div>
-			<p>{fileName}</p>
-		</div>
-	</div>
-</div>
-{#if fileName.length > 0}
+<div class="columns is-centered">
 	<div class="column">
-		<div class="card">
-			<div class="card-header">
-				<p class="card-header-title">Select if file has Users or Groups</p>
+		<div class="columns">
+			<div class="column">
+				<h1 class="title">Add</h1>
 			</div>
-			<div class="card-body">
-				<div class="column">
-					<div class="select mr-2">
-						<select bind:value={selectedType}>
-							<option value="Users">Users</option>
-							<option value="Groups">Groups</option>
-						</select>
-					</div>
-					<button class="button">Add {selectedType}</button>
+		</div>
+
+		<div class="column">
+			<div class="card card-content">
+				<p>
+					To add users or groups first click on the "Get" button, this will save Users or Groups to
+					an Excel file
+				</p>
+				<p>Then you can edit the Excel file remove users or groups you do not want to Audit.</p>
+				<p>
+					Then click on either the "Add Users" or "Add Groups" buttons to add them to the Audit.
+				</p>
+				<p>Note: Do not change the sheet name or the structure of the columns!</p>
+			</div>
+		</div>
+		<div class="column">
+			<div class="card">
+				<div class="card-header">
+					<p class="card-header-title">Get Users or Groups</p>
+				</div>
+				<div class="card-content has-text-centered">
+					<button
+						class="button is-primary mr-2"
+						class:is-loading={buttonsLoading.getUsers}
+						on:click={getUsers}>Get Users</button
+					>
+					<button
+						class="button is-primary"
+						class:is-loading={buttonsLoading.getGroups}
+						on:click={getGroups}>Get Groups</button
+					>
+				</div>
+			</div>
+		</div>
+
+		<div class="column">
+			<div class="card">
+				<div class="card-header">
+					<p class="card-header-title">Add Users or Groups</p>
+				</div>
+				<div class="card-content has-text-centered">
+					<button
+						class="button is-info mr-2"
+						on:click={addUsers}
+						class:is-loading={buttonsLoading.addUsers}>Add Users</button
+					>
+					<button
+						class="button is-info"
+						on:click={addGroups}
+						class:is-loading={buttonsLoading.addGroups}>Add Groups</button
+					>
 				</div>
 			</div>
 		</div>
 	</div>
-{/if}
-<SvelteToast />
+</div>

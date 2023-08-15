@@ -4,9 +4,9 @@
 
 	const dispatch = createEventDispatcher();
 
-	function sayHello(name: string) {
+	function deleteThing(id: string) {
 		dispatch('message', {
-			text: name
+			text: id
 		});
 	}
 
@@ -33,7 +33,7 @@
 						<td>{user.displayName}</td>
 						<td>{user.locationType}</td>
 						<td
-							><button class="button is-small is-danger" on:click={() => sayHello(user.name)}
+							><button class="button is-small is-danger" on:click={() => deleteThing(user.id)}
 								>X</button
 							></td
 						>
@@ -67,7 +67,11 @@
 						<td>{group.name}</td>
 						<td>{group.displayName}</td>
 						<td>{group.locationType}</td>
-						<td><button class="button is-small is-danger">X</button></td>
+						<td
+							><button class="button is-small is-danger" on:click={() => deleteThing(group.id)}
+								>X</button
+							></td
+						>
 					</tr>
 				{/each}
 			</tbody>
