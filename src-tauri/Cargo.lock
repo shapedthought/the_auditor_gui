@@ -3499,9 +3499,9 @@ checksum = "830b7e5d4d90034032940e4ace0d9a9a057e7a45cd94e6c007832e39edb82f6d"
 
 [[package]]
 name = "vauth"
-version = "1.0.0"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0301cccc4d2170284413b4fe47c328e7618e75a8e8ed8497d0beaa30663f453d"
+checksum = "2634b22857707bf98b1f60e8015d2114fc4ef4409418053359c6d2fad1322159"
 dependencies = [
  "anyhow",
  "dotenvy",

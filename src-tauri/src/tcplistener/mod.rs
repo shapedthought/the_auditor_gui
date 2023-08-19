@@ -38,7 +38,7 @@ pub async fn run_tcp_listener(address: String) -> Result<String> {
                 }
             }
             Err(e) => {
-                println!("Unable to connect: {}", e);
+                return Err(anyhow::anyhow!("Unable to connect: {}", e));
             }
         }
     }

@@ -185,9 +185,8 @@ async fn setup_notifications(
         Ok("OK".to_string())
     } else {
         println!("Error in setting up settings");
-        Err(LoginErrorWrapper(LogInError::StatusCodeError(
-            response.status(),
-        )))
+        let response_str = response.text().await?.clone();
+        Err(LogInError::OtherError(response_str).into())
     }
 }
 
@@ -250,9 +249,7 @@ async fn add_users(address: &str, token: &str, path: &str, org_id: &str) -> Resu
         println!("Error in adding users");
         let response_str = res.text().await?.clone();
         println!("Response: {}", response_str);
-        Err(LoginErrorWrapper(LogInError::StatusCodeError(
-            status,
-        )))
+        Err(LogInError::OtherError(response_str).into())
     }
 
 }
@@ -289,9 +286,8 @@ async fn add_groups(address: &str, token: &str, path: &str, org_id: &str) -> Res
         Ok("OK".to_string())
     } else {
         println!("Error in adding groups");
-        Err(LoginErrorWrapper(LogInError::StatusCodeError(
-            res.status(),
-        )))
+        let response_str = res.text().await?.clone();
+        Err(LogInError::OtherError(response_str).into())
     }
 }
 
@@ -327,9 +323,7 @@ async fn delete_audit_item(address: &str, token: &str, id: &str, org_id: &str) -
         println!("Error in deleting items");
         let response_str = response.text().await?.clone();
         println!("Response: {}", response_str);
-        Err(LoginErrorWrapper(LogInError::StatusCodeError(
-           status,
-        )))
+        Err(LogInError::OtherError(response_str).into())
     }
 }
 

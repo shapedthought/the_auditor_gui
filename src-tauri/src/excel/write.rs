@@ -9,8 +9,8 @@ pub fn write_excel(path: String, user: Option<User>, group: Option<Group>) -> Re
     let mut workbook = Workbook::new();
 
     if user.is_some() {
-        let worksheet = workbook.add_worksheet().set_name("Users").unwrap();
-        worksheet.write_row(0, 0, ["ID", "Display Name", "Name", "Type", "Location Type"]).unwrap();
+        let worksheet = workbook.add_worksheet().set_name("Users")?;
+        worksheet.write_row(0, 0, ["ID", "Display Name", "Name", "Type", "Location Type"])?;
 
         let user = user.unwrap();
     
@@ -26,8 +26,8 @@ pub fn write_excel(path: String, user: Option<User>, group: Option<Group>) -> Re
     };
     
     if group.is_some() {
-        let worksheet = workbook.add_worksheet().set_name("Groups").unwrap();
-        worksheet.write_row(0, 0, ["ID", "Display Name", "Name", "Type", "Location Type", "Managed by", "Site"]).unwrap();
+        let worksheet = workbook.add_worksheet().set_name("Groups")?;
+        worksheet.write_row(0, 0, ["ID", "Display Name", "Name", "Type", "Location Type", "Managed by", "Site"])?;
 
         let group = group.unwrap();
     
@@ -45,7 +45,7 @@ pub fn write_excel(path: String, user: Option<User>, group: Option<Group>) -> Re
     }
 
 
-    workbook.save(path).unwrap();
+    workbook.save(path)?;
 
     Ok(())
 }
