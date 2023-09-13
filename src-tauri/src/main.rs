@@ -136,7 +136,7 @@ async fn get_groups(address: &str, token: &str, path: &str, org_id: &str) -> Res
         .json()
         .await?;
 
-        write_excel(path.to_string(), None, Some(response.clone()))?;
+    write_excel(path.to_string(), None, Some(response.clone()))?;
     Ok(response)
 }
 

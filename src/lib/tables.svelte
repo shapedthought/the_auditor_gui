@@ -76,7 +76,6 @@
 				{/each}
 			</tbody>
 		</table>
-		%$
 	</div>
 {:else}
 	<div class="column">
